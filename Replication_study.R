@@ -316,3 +316,47 @@ p4 <- ggplot() +
 combined_plot <- (p1 + p2) / (p3 + p4)
 
 ggsave("combined_plot.pdf", plot = combined_plot, width = 8, height = 6)
+
+# Effect of collectivization on grain output
+model1 <- plm(loutput ~ treatment_output + flood + draught + factor(year),
+              data = data,
+              model = "within",
+              effect = "twoways",
+              index = c("countycode", "year"))
+
+coeftest(model1, vcov = vcovHC(model1, type = "HC1", cluster = "group"))
+
+model2 <- plm(loutput ~ treatment_output + ldraft + larea + lpop + 
+                flood + draught + factor(year),
+              data = data,
+              model = "within",
+              effect = "twoways",
+              index = c("countycode", "year"))
+
+coeftest(model2, vcov = vcovHC(model2, type = "HC1", cluster = "group"))
+
+cov1 <- vcovHC(model1, type = "HC1", cluster = "group")
+cov2 <- vcovHC(model2, type = "HC1", cluster = "group")
+se1 <- sqrt(diag(cov1))
+se2 <- sqrt(diag(cov2))
+
+stargazer(model1, model2,
+          type = "latex",
+          se = list(se1, se2),
+          title = "Fixed Effects Regression Results",
+          column.labels = c("Basic", "With Controls"),
+          dep.var.labels = "Log Output",
+          covariate.labels = c("Treatment (t-1)", "Flood", "Drought",
+                               "Log Draft", "Log Area", "Log Population"),
+          omit = "year",
+          omit.labels = "Year FE",
+          add.lines = list(
+            c("Year FE", "Yes", "Yes"),
+            c("County FE", "Yes", "Yes")
+          ),
+          notes = "Clustered standard errors at county level in parentheses",
+          notes.align = "l",
+          model.numbers = TRUE,
+          digits = 3,
+          star.cutoffs = c(0.1, 0.05, 0.01))
+
